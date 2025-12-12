@@ -1,0 +1,13 @@
+Options -Indexes
+RewriteEngine On
+
+# Send base path to public/
+RewriteRule ^$ public/ [L]
+
+# Do not rewrite existing files or directories
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Redirect all other requests to public/
+RewriteRule ^(.*)$ public/$1 [L,QSA]
