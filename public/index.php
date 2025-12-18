@@ -512,6 +512,51 @@ switch ($page) {
         $dir = ($_POST['dir'] ?? $_GET['dir'] ?? 'receita') === 'despesa' ? 'despesa' : 'receita';
         $typesAll = AccountType::all();
         $types = array_values(array_filter($typesAll, function($t) use ($dir) { return ($t['kind'] ?? '') === $dir; }));
+        if ($method === 'POST' && ($_POST['form'] ?? '') === 'import_json') {
+            $typeId = (int)($_POST['account_type_id'] ?? 0);
+            $payload = $_POST['json'] ?? '';
+            $imported = 0; $failed = 0;
+            if ($typeId && $payload) {
+                $rows = json_decode($payload, true);
+                if (is_array($rows)) {
+                    foreach ($rows as $r) {
+                        $dateStr = trim((string)($r['date'] ?? ''));
+                        $valStr = trim((string)($r['amount'] ?? ''));
+                        $partyName = trim((string)($r['party'] ?? ''));
+                        $desc = (string)($r['description'] ?? '');
+                        $doc = (string)($r['document'] ?? '');
+                        $status = strtolower(trim((string)($r['status'] ?? '')));
+                        $monthMap = ['janeiro'=>1,'fevereiro'=>2,'março'=>3,'marco'=>3,'abril'=>4,'maio'=>5,'junho'=>6,'julho'=>7,'agosto'=>8,'setembro'=>9,'outubro'=>10,'novembro'=>11,'dezembro'=>12];
+                        $cleanDate = strtolower($dateStr);
+                        $cleanDate = preg_replace('/^(segunda-feira|terça-feira|terca-feira|quarta-feira|quinta-feira|sexta-feira|sábado|sabado|domingo),?\s*/','',$cleanDate);
+                        $date = null;
+                        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $cleanDate, $m)) { $date = $cleanDate; }
+                        elseif (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $cleanDate, $m)) { $date = $m[3].'-'.$m[2].'-'.$m[1]; }
+                        elseif (preg_match('/^(\d{1,2})\s+de\s+([a-zçãé]+)\s+de\s+(\d{4})$/', $cleanDate, $m)) { $mm = $monthMap[$m[2]] ?? null; if ($mm) { $date = sprintf('%04d-%02d-%02d',(int)$m[3],$mm,(int)$m[1]); } }
+                        if (!$date) { $date = date('Y-m-d'); }
+                        $valStr = str_replace(['R$',' '],'',$valStr); $valStr = str_replace(['.'], '', $valStr); $valStr = str_replace([','], '.', $valStr);
+                        $amount = (float)$valStr;
+                        if ($amount <= 0) { $failed++; continue; }
+                        $partyId = 0; $partyType = ($dir==='despesa') ? 'supplier' : 'customer';
+                        if ($partyName !== '') {
+                            $partyName = preg_replace('/\s+/',' ', $partyName);
+                            if ($dir==='despesa') { $ex = App\Models\Supplier::findByName($partyName); $partyId = $ex ? (int)$ex['id'] : App\Models\Supplier::createPlaceholder($partyName); }
+                            else { $ex = App\Models\Customer::findByName($partyName); $partyId = $ex ? (int)$ex['id'] : App\Models\Customer::createPlaceholder($partyName); }
+                        }
+                        try {
+                            $accId = Account::create($typeId, $partyType, $partyId, $desc, $amount, 1, $date, $doc ?: null);
+                            if (in_array($status, ['paid','baixado','pago'], true)) {
+                                $inst = Installment::byAccount($accId);
+                                if (!empty($inst)) Installment::markPaidWithDate((int)$inst[0]['id'], $date);
+                            }
+                            $imported++;
+                        } catch (\Throwable $e) { $failed++; }
+                    }
+                }
+            }
+            header('Location: index.php?page=import&dir=' . $dir . '&ok=' . $imported . '&fail=' . $failed);
+            exit;
+        }
         if ($method === 'POST' && ($_POST['form'] ?? '') === 'import') {
             $typeId = (int)($_POST['account_type_id'] ?? 0);
             $file = $_FILES['csv'] ?? null;
@@ -576,6 +621,7 @@ switch ($page) {
         if (isset($_GET['ok'])) {
             echo '<div class="mb-3 text-sm">Importados: ' . intval($_GET['ok']) . ' • Falhas: ' . intval($_GET['fail'] ?? 0) . '</div>';
         }
+        echo '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">';
         echo '<form method="post" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-3">';
         echo '<input type="hidden" name="form" value="import" />';
         echo '<select name="dir" class="border rounded px-3 py-2"><option value="despesa">Despesas</option><option value="receita">Receitas</option></select>';
@@ -585,6 +631,36 @@ switch ($page) {
         echo '<input type="file" name="csv" accept=".csv,text/csv" class="border rounded px-3 py-2" required />';
         echo '<div class="md:col-span-3"><button class="bg-imperial_blue-600 text-white px-4 py-2 rounded">Importar</button></div>';
         echo '</form>';
+        echo '<div class="border rounded p-4">';
+        echo '<div class="text-sm font-medium mb-2">Importar via Excel (.xlsx)</div>';
+        echo '<form method="post" id="excelForm" class="space-y-3">';
+        echo '<input type="hidden" name="form" value="import_json" />';
+        echo '<input type="hidden" name="dir" value="' . htmlspecialchars($dir) . '" />';
+        echo '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">';
+        echo '<select name="account_type_id" class="border rounded px-3 py-2" required>'; 
+        foreach ($types as $t) { echo '<option value="' . intval($t['id']) . '">' . htmlspecialchars($t['name']) . ' • ' . htmlspecialchars($t['cost_center_name']) . '</option>'; }
+        echo '</select>';
+        echo '<input id="xlsxFile" type="file" accept=".xlsx,.xls" class="border rounded px-3 py-2" />';
+        echo '<button type="button" id="btnParse" class="bg-imperial_blue-600 text-white px-4 py-2 rounded">Pré-visualizar</button>';
+        echo '</div>';
+        echo '<div id="mapping" class="mt-3 hidden">';
+        echo '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">';
+        echo '<select id="map_date" class="border rounded px-3 py-2"></select>';
+        echo '<select id="map_amount" class="border rounded px-3 py-2"></select>';
+        echo '<select id="map_party" class="border rounded px-3 py-2"></select>';
+        echo '<select id="map_desc" class="border rounded px-3 py-2"></select>';
+        echo '<select id="map_doc" class="border rounded px-3 py-2"></select>';
+        echo '<select id="map_status" class="border rounded px-3 py-2"></select>';
+        echo '</div>';
+        echo '<div class="mt-3"><table class="w-full text-xs" id="preview"><thead></thead><tbody></tbody></table></div>';
+        echo '<input type="hidden" name="json" id="jsonPayload" />';
+        echo '<div class="mt-3"><button id="btnImportExcel" class="bg-imperial_blue-600 text-white px-4 py-2 rounded">Importar Excel</button></div>';
+        echo '</div>';
+        echo '</form>';
+        echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js"></script>';
+        echo '<script src="js/import.js"></script>';
+        echo '</div>';
+        echo '</div>';
         echo '<div class="mt-4 text-sm prose"><p>Formato esperado (CSV com cabeçalho):</p><pre>data,valor,parte,descricao,documento,status\n2025-12-05,680.00,Fábio,Serviço,2308,paid</pre><p>Delimitadores "," ou ";" são aceitos. Datas "dd/mm/aaaa" também.</p></div>';
         echo '</div>';
         break;
