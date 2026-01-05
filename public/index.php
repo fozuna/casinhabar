@@ -40,9 +40,12 @@ switch ($page) {
         $typesDespesa = array_values(array_filter($typesAll, function($t) { return ($t['kind'] ?? '') === 'despesa'; }));
         $dir = 'receita';
         echo '<div class="grid grid-cols-1 md:grid-cols-3 gap-4">';
-        echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Saldo até o momento</div><div class="text-2xl font-semibold text-imperial_blue-600">R$ ' . number_format($sum['saldoAteMomento'], 2, ',', '.') . '</div></div>';
-        echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Receitas do período</div><div class="text-2xl font-semibold text-blue_bell-600">R$ ' . number_format($sum['receitasPeriodo'], 2, ',', '.') . '</div></div>';
-        echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Despesas do período</div><div class="text-2xl font-semibold text-brand">R$ ' . number_format($sum['despesasPeriodo'], 2, ',', '.') . '</div></div>';
+        $clsSaldo = ($sum['saldoAteMomento'] ?? 0) >= 0 ? 'text-blue_bell-600' : 'text-brand';
+        $clsRec = ($sum['receitasPeriodo'] ?? 0) >= 0 ? 'text-blue_bell-600' : 'text-brand';
+        $clsDesp = ($sum['despesasPeriodo'] ?? 0) >= 0 ? 'text-brand' : 'text-blue_bell-600';
+        echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Saldo até o momento</div><div class="text-2xl font-semibold ' . $clsSaldo . '">R$ ' . number_format($sum['saldoAteMomento'], 2, ',', '.') . '</div></div>';
+        echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Receitas do período</div><div class="text-2xl font-semibold ' . $clsRec . '">R$ ' . number_format($sum['receitasPeriodo'], 2, ',', '.') . '</div></div>';
+        echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Despesas do período</div><div class="text-2xl font-semibold ' . $clsDesp . '">R$ ' . number_format($sum['despesasPeriodo'], 2, ',', '.') . '</div></div>';
         echo '</div>';
         echo '<div class="mt-6 bg-white shadow rounded p-4">';
         echo '<form class="grid grid-cols-1 md:grid-cols-5 gap-4" method="get" action="index.php">';
