@@ -217,6 +217,8 @@ switch ($page) {
         }
         $typesAll = AccountType::all();
         $types = array_values(array_filter($typesAll, function($t) use ($dir) { return ($t['kind'] ?? '') === $dir; }));
+        $typesReceita = array_values(array_filter($typesAll, function($t) { return ($t['kind'] ?? '') === 'receita'; }));
+        $typesDespesa = array_values(array_filter($typesAll, function($t) { return ($t['kind'] ?? '') === 'despesa'; }));
         $customers = Customer::all();
         $suppliers = Supplier::all();
         $accountsAll = Account::all();
@@ -229,6 +231,7 @@ switch ($page) {
         echo '<a class="px-3 py-1 rounded ' . ($dir==='despesa'?'bg-magenta_bloom-600 text-white':'bg-white border') . '" href="index.php?page=entries&dir=despesa">Despesas</a>';
         echo '</div>';
         echo '</div>';
+        echo '<script>(function(){var map={receita:' . json_encode(array_map(function($t){return ['id'=>$t['id'],'label'=>$t['name'].' • '.$t['cost_center_name']];}, $typesReceita)) . ',despesa:' . json_encode(array_map(function($t){return ['id'=>$t['id'],'label'=>$t['name'].' • '.$t['cost_center_name']];}, $typesDespesa)) . '};document.querySelectorAll(\"form\").forEach(function(f){var d=f.querySelector(\"select[name=dir]\");var t=f.querySelector(\"select[name=account_type_id]\");if(!d||!t){return;}function refill(){var list=map[d.value]||[];t.innerHTML=\"\";list.forEach(function(it){var o=document.createElement(\"option\");o.value=it.id;o.textContent=it.label;t.appendChild(o);});}d.addEventListener(\"change\",refill);});})();</script>';
         if (!empty($error)) echo '<div class="text-magenta_bloom-600 mb-3">' . htmlspecialchars($error) . '</div>';
         echo '<form method="post" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-6">';
         echo '<input type="hidden" name="form" value="account" />';
