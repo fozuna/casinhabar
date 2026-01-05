@@ -42,7 +42,7 @@ switch ($page) {
         echo '<div class="grid grid-cols-1 md:grid-cols-3 gap-4">';
         echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Saldo até o momento</div><div class="text-2xl font-semibold text-imperial_blue-600">R$ ' . number_format($sum['saldoAteMomento'], 2, ',', '.') . '</div></div>';
         echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Receitas do período</div><div class="text-2xl font-semibold text-blue_bell-600">R$ ' . number_format($sum['receitasPeriodo'], 2, ',', '.') . '</div></div>';
-        echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Despesas do período</div><div class="text-2xl font-semibold text-magenta_bloom-600">R$ ' . number_format($sum['despesasPeriodo'], 2, ',', '.') . '</div></div>';
+        echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Despesas do período</div><div class="text-2xl font-semibold text-brand">R$ ' . number_format($sum['despesasPeriodo'], 2, ',', '.') . '</div></div>';
         echo '</div>';
         echo '<div class="mt-6 bg-white shadow rounded p-4">';
         echo '<form class="grid grid-cols-1 md:grid-cols-5 gap-4" method="get" action="index.php">';
@@ -78,7 +78,7 @@ switch ($page) {
         echo '<table class="w-full text-sm">';
         echo '<thead><tr class="text-left"><th>Data</th><th>Tipo</th><th class="hidden sm:table-cell">Centro</th><th>Conta</th><th class="hidden sm:table-cell">Descrição</th><th class="hidden sm:table-cell">Documento</th><th class="hidden sm:table-cell">Parte</th><th class="text-right">Valor</th><th>Status</th><th class="w-40">Ação</th></tr></thead><tbody>';
         foreach ($items as $it) {
-            $kindLbl = $it['kind']==='receita' ? '<span class="text-blue_bell-600">Receita</span>' : '<span class="text-magenta_bloom-600">Despesa</span>';
+            $kindLbl = $it['kind']==='receita' ? '<span class="text-blue_bell-600">Receita</span>' : '<span class="text-brand">Despesa</span>';
             $statusLbl = $it['status']==='paid' ? '<span class="text-green-600">Baixado</span>' : '<span class="text-carbon_black-600">Pendente</span>';
             echo '<tr class="border-t">';
             echo '<td class="py-2">' . htmlspecialchars($it['due_date']) . '</td>';
@@ -129,7 +129,7 @@ switch ($page) {
         $list = Customer::all();
         echo '<div class="bg-white shadow rounded p-4">';
         echo '<div class="text-lg font-semibold mb-4">Clientes</div>';
-        if (!empty($error)) echo '<div class="text-magenta_bloom-600 mb-3">' . htmlspecialchars($error) . '</div>';
+        if (!empty($error)) echo '<div class="text-brand mb-3">' . htmlspecialchars($error) . '</div>';
         echo '<form method="post" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">';
         echo '<input name="name" placeholder="Nome" class="border rounded px-3 py-2" required />';
         echo '<input name="cpf_cnpj" placeholder="CPF ou CNPJ" class="border rounded px-3 py-2" required />';
@@ -162,7 +162,7 @@ switch ($page) {
         $list = Supplier::all();
         echo '<div class="bg-white shadow rounded p-4">';
         echo '<div class="text-lg font-semibold mb-4">Fornecedores</div>';
-        if (!empty($error)) echo '<div class="text-magenta_bloom-600 mb-3">' . htmlspecialchars($error) . '</div>';
+        if (!empty($error)) echo '<div class="text-brand mb-3">' . htmlspecialchars($error) . '</div>';
         echo '<form method="post" class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">';
         echo '<input name="name" placeholder="Nome" class="border rounded px-3 py-2" required />';
         echo '<input name="cpf_cnpj" placeholder="CPF ou CNPJ" class="border rounded px-3 py-2" required />';
@@ -353,14 +353,14 @@ switch ($page) {
         echo '<div class="text-lg font-semibold">Lançamentos • ' . ($dir === 'receita' ? 'Receitas' : 'Despesas') . '</div>';
         echo '<div class="text-sm">';
         echo '<a class="px-3 py-1 rounded ' . ($dir==='receita'?'bg-blue_bell-600 text-white':'bg-white border') . '" href="index.php?page=entries&dir=receita">Receitas</a> ';
-        echo '<a class="px-3 py-1 rounded ' . ($dir==='despesa'?'bg-magenta_bloom-600 text-white':'bg-white border') . '" href="index.php?page=entries&dir=despesa">Despesas</a>';
+        echo '<a class="px-3 py-1 rounded ' . ($dir==='despesa'?'bg-brand text-white':'bg-white border') . '" href="index.php?page=entries&dir=despesa">Despesas</a>';
         echo '</div>';
         echo '</div>';
         echo '<script>(function(){var map={receita:' . json_encode(array_map(function($t){return ['id'=>$t['id'],'label'=>$t['name'].' • '.$t['cost_center_name']];}, $typesReceita)) . ',despesa:' . json_encode(array_map(function($t){return ['id'=>$t['id'],'label'=>$t['name'].' • '.$t['cost_center_name']];}, $typesDespesa)) . '};document.querySelectorAll(\"form\").forEach(function(f){var d=f.querySelector(\"select[name=dir]\");var t=f.querySelector(\"select[name=account_type_id]\");if(!d||!t){return;}function refill(){var list=map[d.value]||[];t.innerHTML=\"\";list.forEach(function(it){var o=document.createElement(\"option\");o.value=it.id;o.textContent=it.label;t.appendChild(o);});}d.addEventListener(\"change\",refill);});})();</script>';
-        if (!empty($error)) echo '<div class="text-magenta_bloom-600 mb-3">' . htmlspecialchars($error) . '</div>';
+        if (!empty($error)) echo '<div class="text-brand mb-3">' . htmlspecialchars($error) . '</div>';
         echo '<form method="post" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-6">';
         echo '<input type="hidden" name="form" value="account" />';
-        $clsType = !empty($errors['account_type_id']) ? 'border-magenta_bloom-500 ring-1 ring-magenta_bloom-500' : 'border';
+        $clsType = !empty($errors['account_type_id']) ? 'border-brand ring-1 ring-brand' : 'border';
         $typeMap = [];
         foreach ($types as $t) { $typeMap[] = ['id'=>$t['id'], 'label'=>$t['name'].' • '.$t['kind'].' • '.$t['cost_center_name']]; }
         echo '<input list="type_list" name="type_label" placeholder="Tipo de conta" class="' . $clsType . ' rounded px-3 py-2 md:col-span-2" />';
@@ -368,7 +368,7 @@ switch ($page) {
         foreach ($typeMap as $tm) { echo '<option value="' . htmlspecialchars($tm['label']) . '"></option>'; }
         echo '</datalist>';
         echo '<input type="hidden" name="account_type_id" />';
-        $clsPartyType = !empty($errors['party_id']) ? 'border-magenta_bloom-500 ring-1 ring-magenta_bloom-500' : 'border';
+        $clsPartyType = !empty($errors['party_id']) ? 'border-brand ring-1 ring-brand' : 'border';
         echo '<select name="party_type" class="' . $clsPartyType . ' rounded px-3 py-2">';
         echo '<option value="customer">Cliente</option><option value="supplier">Fornecedor</option><option value="none">Sem vínculo</option>';
         echo '</select>';
@@ -384,9 +384,9 @@ switch ($page) {
         echo '<input name="description" placeholder="Descrição" class="border rounded px-3 py-2 md:col-span-2" />';
         $clsDoc = 'border';
         if ($dir === 'despesa') { echo '<input name="document" placeholder="Documento (NF, recibo, etc.)" class="' . $clsDoc . ' rounded px-3 py-2 md:col-span-2" />'; }
-        $clsTotal = !empty($errors['total_amount']) ? 'border-magenta_bloom-500 ring-1 ring-magenta_bloom-500' : 'border';
-        $clsInst = !empty($errors['installments']) ? 'border-magenta_bloom-500 ring-1 ring-magenta_bloom-500' : 'border';
-        $clsDate = !empty($errors['first_due_date']) ? 'border-magenta_bloom-500 ring-1 ring-magenta_bloom-500' : 'border';
+        $clsTotal = !empty($errors['total_amount']) ? 'border-brand ring-1 ring-brand' : 'border';
+        $clsInst = !empty($errors['installments']) ? 'border-brand ring-1 ring-brand' : 'border';
+        $clsDate = !empty($errors['first_due_date']) ? 'border-brand ring-1 ring-brand' : 'border';
         echo '<input name="total_amount" type="number" step="0.01" placeholder="Valor total" class="' . $clsTotal . ' rounded px-3 py-2" required />';
         echo '<input name="installments" type="number" min="1" placeholder="Parcelas" class="' . $clsInst . ' rounded px-3 py-2" required />';
         echo '<input name="first_due_date" type="date" class="' . $clsDate . ' rounded px-3 py-2" required />';
@@ -414,7 +414,7 @@ switch ($page) {
         echo '<div class="flex flex-wrap items-end gap-3">';
         echo '<form method="post" class="flex items-end gap-3">';
         echo '<input type="hidden" name="form" value="undo_import_batch" />';
-        echo '<button class="bg-magenta_bloom-600 hover:bg-magenta_bloom-700 transition text-white px-4 py-2 rounded" ' . ($lastBatch ? '' : 'disabled') . '>Desfazer última importação</button>';
+        echo '<button class="bg-brand hover:bg-brand/90 transition text-white px-4 py-2 rounded" ' . ($lastBatch ? '' : 'disabled') . '>Desfazer última importação</button>';
         echo $lastBatch ? '<span class="text-xs text-carbon_black-600">Lote: ' . htmlspecialchars($lastBatch) . '</span>' : '<span class="text-xs text-carbon_black-600">Sem lote recente</span>';
         echo '</form>';
         echo '<form method="post" class="flex items-end gap-3">';
@@ -470,7 +470,7 @@ switch ($page) {
             echo '<table class="w-full text-sm mt-2">';
             echo '<thead><tr class="text-left">' . ($dir==='despesa' ? '<th>Doc</th>' : '') . '<th>Nº</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ação</th></tr></thead><tbody>';
             foreach ($inst as $i) {
-                $status = $i['status'] === 'paid' ? '<span class="text-green-600">Pago</span>' : '<span class="text-magenta_bloom-600">Pendente</span>';
+                $status = $i['status'] === 'paid' ? '<span class="text-green-600">Pago</span>' : '<span class="text-brand">Pendente</span>';
                 echo '<tr class="border-t">';
                 if ($dir==='despesa') { echo '<td class="py-2">' . htmlspecialchars($a['document'] ?? '') . '</td>'; }
                 echo '<td class="py-2">' . intval($i['number']) . '</td><td>' . htmlspecialchars($i['due_date']) . '</td><td>R$ ' . number_format((float)$i['amount'], 2, ',', '.') . '</td><td>' . $status . '</td><td>';

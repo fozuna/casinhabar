@@ -11,6 +11,7 @@
         theme: {
           extend: {
             colors: {
+              brand: { DEFAULT: '#C65D3B' },
               imperial_blue: { DEFAULT: '#0a2463', 100: '#020713', 200: '#040e27', 300: '#06163a', 400: '#081d4e', 500: '#0a2463', 600: '#113fab', 700: '#235ee9', 800: '#6c94f0', 900: '#b6c9f8' },
               blue_bell: { DEFAULT: '#3e92cc', 100: '#0b1d2a', 200: '#163a54', 300: '#21577e', 400: '#2d74a8', 500: '#3e92cc', 600: '#64a7d6', 700: '#8bbde0', 800: '#b2d3ea', 900: '#d8e9f5' },
               ghost_white: { DEFAULT: '#fffaff', 100: '#650065', 200: '#ca00ca', 300: '#ff30ff', 400: '#ff95ff', 500: '#fffaff', 600: '#fffbff', 700: '#fffcff', 800: '#fffdff', 900: '#fffeff' },
