@@ -53,10 +53,6 @@
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a11 11 0 100 22 11 11 0 000-22zM7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h10v2H7v-2z"/></svg>
       <span>Despesas</span>
     </a>
-    <a href="index.php?page=import" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-magenta_bloom-600">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
-      <span>Importar</span>
-    </a>
     <div class="mt-3 text-xs uppercase opacity-80 px-3">Administração</div>
     <a href="index.php?page=cost-centers" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-magenta_bloom-600">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 6v-6h6v6h-6z"/></svg>
