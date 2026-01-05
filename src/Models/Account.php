@@ -77,5 +77,20 @@ class Account
         }
         return $deleted;
     }
+
+    public static function deleteByDirection(string $direction): int
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('SELECT id FROM accounts WHERE direction = ?');
+        $stmt->execute([$direction]);
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $deleted = 0;
+        foreach ($ids as $aid) {
+            $pdo->prepare('DELETE FROM installments WHERE account_id = ?')->execute([$aid]);
+            $pdo->prepare('DELETE FROM accounts WHERE id = ?')->execute([$aid]);
+            $deleted++;
+        }
+        return $deleted;
+    }
 }
 
