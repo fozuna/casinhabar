@@ -35,6 +35,10 @@ switch ($page) {
         $split = Reports::flowSplit($start, $end, $ccId);
         $items = Reports::flowItems($start, $end, $ccId);
         $centers = CostCenter::all();
+        $typesAll = AccountType::all();
+        $typesReceita = array_values(array_filter($typesAll, function($t) { return ($t['kind'] ?? '') === 'receita'; }));
+        $typesDespesa = array_values(array_filter($typesAll, function($t) { return ($t['kind'] ?? '') === 'despesa'; }));
+        $dir = 'receita';
         echo '<div class="grid grid-cols-1 md:grid-cols-3 gap-4">';
         echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Saldo até o momento</div><div class="text-2xl font-semibold text-imperial_blue-600">R$ ' . number_format($sum['saldoAteMomento'], 2, ',', '.') . '</div></div>';
         echo '<div class="bg-white shadow rounded p-4"><div class="text-carbon_black-600 text-sm">Receitas do período</div><div class="text-2xl font-semibold text-blue_bell-600">R$ ' . number_format($sum['receitasPeriodo'], 2, ',', '.') . '</div></div>';
