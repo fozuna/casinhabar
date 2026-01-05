@@ -66,6 +66,7 @@ switch ($page) {
         echo '<div><div class="text-sm mb-1">Baixado</div><div class="aspect-video"><canvas id="chartPaid" class="w-full h-full"></canvas></div></div>';
         echo '</div>';
         echo '</div>';
+        echo '<script>(function(){var typesMap={receita:' . json_encode(array_map(function($t){return ['id'=>$t['id'],'label'=>$t['name'].' • '.$t['cost_center_name']];}, $typesReceita)) . ',despesa:' . json_encode(array_map(function($t){return ['id'=>$t['id'],'label'=>$t['name'].' • '.$t['cost_center_name']];}, $typesDespesa)) . '};function bind(dirId,typeId){var d=document.getElementById(dirId),s=document.getElementById(typeId);if(!d||!s)return;function refill(){var list=typesMap[d.value||\"receita\"]||[];s.innerHTML=\"\";list.forEach(function(it){var o=document.createElement(\"option\");o.value=it.id;o.textContent=it.label;s.appendChild(o);});}d.addEventListener(\"change\",refill);refill();}bind(\"csvDir\",\"csvType\");bind(\"xlsxDir\",\"xlsxType\");})();</script>';
         echo '</div>';
         echo '<div class="mt-6 bg-white shadow rounded p-4">';
         echo '<div class="text-carbon_black-600 text-sm mb-3">Fluxo de Caixa detalhado</div>';
@@ -622,10 +623,10 @@ switch ($page) {
             echo '<div class="mb-3 text-sm">Importados: ' . intval($_GET['ok']) . ' • Falhas: ' . intval($_GET['fail'] ?? 0) . '</div>';
         }
         echo '<div class="grid grid-cols-1 md:grid-cols-2 gap-6">';
-        echo '<form method="post" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-3">';
+        echo '<form id="csvForm" method="post" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-3 gap-3">';
         echo '<input type="hidden" name="form" value="import" />';
-        echo '<select name="dir" class="border rounded px-3 py-2"><option value="despesa">Despesas</option><option value="receita">Receitas</option></select>';
-        echo '<select name="account_type_id" class="border rounded px-3 py-2" required>'; 
+        echo '<select id="csvDir" name="dir" class="border rounded px-3 py-2"><option value="despesa"' . ($dir==='despesa'?' selected':'') . '>Despesas</option><option value="receita"' . ($dir==='receita'?' selected':'') . '>Receitas</option></select>';
+        echo '<select id="csvType" name="account_type_id" class="border rounded px-3 py-2" required>'; 
         foreach ($types as $t) { echo '<option value="' . intval($t['id']) . '">' . htmlspecialchars($t['name']) . ' • ' . htmlspecialchars($t['cost_center_name']) . '</option>'; }
         echo '</select>';
         echo '<input type="file" name="csv" accept=".csv,text/csv" class="border rounded px-3 py-2" required />';
@@ -664,9 +665,9 @@ switch ($page) {
         echo '<div class="text-sm font-medium mb-2">Importar via Copiar/Colar</div>';
         echo '<form method="post" id="pasteForm" class="space-y-3">';
         echo '<input type="hidden" name="form" value="import_json" />';
-        echo '<input type="hidden" name="dir" value="' . htmlspecialchars($dir) . '" />';
         echo '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">';
-        echo '<select name="account_type_id" class="border rounded px-3 py-2" required>'; 
+        echo '<select id="xlsxDir" name="dir" class="border rounded px-3 py-2"><option value="despesa"' . ($dir==='despesa'?' selected':'') . '>Despesas</option><option value="receita"' . ($dir==='receita'?' selected':'') . '>Receitas</option></select>';
+        echo '<select id="xlsxType" name="account_type_id" class="border rounded px-3 py-2" required>'; 
         foreach ($types as $t) { echo '<option value="' . intval($t['id']) . '">' . htmlspecialchars($t['name']) . ' • ' . htmlspecialchars($t['cost_center_name']) . '</option>'; }
         echo '</select>';
         echo '<label class="inline-flex items-center gap-2"><input id="pasteHasHeader" type="checkbox" class="form-checkbox" /> <span class="text-sm">Primeira linha é cabeçalho</span></label>';
