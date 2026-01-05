@@ -184,6 +184,8 @@ switch ($page) {
             $typeId = (int)($_POST['account_type_id'] ?? 0);
             $file = $_FILES['csv'] ?? null;
             $imported = 0; $failed = 0;
+            $batch = uniqid('imp_', true);
+            $_SESSION['last_import_batch_' . $dir] = $batch;
             if ($typeId && $file && ($file['error'] ?? 1) === 0) {
                 $path = $file['tmp_name'];
                 $fh = fopen($path, 'r');
@@ -219,7 +221,7 @@ switch ($page) {
                             else { $ex = App\Models\Customer::findByName($partyName); $partyId = $ex ? (int)$ex['id'] : App\Models\Customer::createPlaceholder($partyName); }
                         }
                         try {
-                            $accId = Account::create($typeId, $partyType, $partyId, $desc, $amount, 1, $date, $doc ?: null);
+                            $accId = Account::create($typeId, $partyType, $partyId, $desc, $amount, 1, $date, $doc ?: null, 1, $batch);
                             if (in_array($status, ['paid','baixado','pago'], true)) {
                                 $inst = Installment::byAccount($accId);
                                 if (!empty($inst)) Installment::markPaidWithDate((int)$inst[0]['id'], $date);
@@ -237,6 +239,8 @@ switch ($page) {
             $typeId = (int)($_POST['account_type_id'] ?? 0);
             $payload = $_POST['json'] ?? '';
             $imported = 0; $failed = 0;
+            $batch = uniqid('imp_', true);
+            $_SESSION['last_import_batch_' . $dir] = $batch;
             if ($typeId && $payload) {
                 $rows = json_decode($payload, true);
                 if (is_array($rows)) {
@@ -264,7 +268,7 @@ switch ($page) {
                             else { $ex = App\Models\Customer::findByName($partyName); $partyId = $ex ? (int)$ex['id'] : App\Models\Customer::createPlaceholder($partyName); }
                         }
                         try {
-                            $accId = Account::create($typeId, $partyType, $partyId, $desc, $amount, 1, $date, $doc ?: null);
+                            $accId = Account::create($typeId, $partyType, $partyId, $desc, $amount, 1, $date, $doc ?: null, 1, $batch);
                             if (in_array($status, ['paid','baixado','pago'], true)) {
                                 $inst = Installment::byAccount($accId);
                                 if (!empty($inst)) Installment::markPaidWithDate((int)$inst[0]['id'], $date);
@@ -276,6 +280,26 @@ switch ($page) {
             }
             header('Location: index.php?page=entries&dir=' . $dir . '&ok=' . $imported . '&fail=' . $failed);
             exit;
+        }
+        if ($method === 'POST' && ($_POST['form'] ?? '') === 'undo_import_batch') {
+            $isAdmin = AAuth::requireRole(['admin']);
+            $batch = $_SESSION['last_import_batch_' . $dir] ?? '';
+            if ($isAdmin && $batch) {
+                $deleted = Account::deleteImported($dir, $batch, null, null);
+                unset($_SESSION['last_import_batch_' . $dir]);
+                header('Location: index.php?page=entries&dir=' . $dir . '&deleted=' . $deleted);
+                exit;
+            }
+        }
+        if ($method === 'POST' && ($_POST['form'] ?? '') === 'undo_import_range') {
+            $isAdmin = AAuth::requireRole(['admin']);
+            $start = $_POST['start'] ?? null;
+            $end = $_POST['end'] ?? null;
+            if ($isAdmin) {
+                $deleted = Account::deleteImported($dir, null, $start ?: null, $end ?: null);
+                header('Location: index.php?page=entries&dir=' . $dir . '&deleted=' . $deleted);
+                exit;
+            }
         }
         if ($method === 'POST' && ($_POST['form'] ?? '') === 'account') {
             $typeId = (int)($_POST['account_type_id'] ?? 0);
@@ -383,6 +407,22 @@ switch ($page) {
         echo '<div><button class="bg-imperial_blue-600 hover:bg-imperial_blue-700 transition text-white px-4 py-2 rounded">Importar CSV</button></div>';
         echo '</form>';
         echo '<div class="mt-2 text-xs text-carbon_black-600">Cabecalhos aceitos: data, valor, parte, descricao, documento, status • Delimitadores , ou ;</div>';
+        echo '</div>';
+        echo '<div class="border rounded-xl p-4">';
+        echo '<div class="text-sm font-medium mb-3">Desfazer importação</div>';
+        $lastBatch = $_SESSION['last_import_batch_' . $dir] ?? '';
+        echo '<div class="flex flex-wrap items-end gap-3">';
+        echo '<form method="post" class="flex items-end gap-3">';
+        echo '<input type="hidden" name="form" value="undo_import_batch" />';
+        echo '<button class="bg-magenta_bloom-600 hover:bg-magenta_bloom-700 transition text-white px-4 py-2 rounded" ' . ($lastBatch ? '' : 'disabled') . '>Desfazer última importação</button>';
+        echo $lastBatch ? '<span class="text-xs text-carbon_black-600">Lote: ' . htmlspecialchars($lastBatch) . '</span>' : '<span class="text-xs text-carbon_black-600">Sem lote recente</span>';
+        echo '</form>';
+        echo '<form method="post" class="flex items-end gap-3">';
+        echo '<input type="hidden" name="form" value="undo_import_range" />';
+        echo '<div><label class="block text-xs mb-1">Início</label><input type="date" name="start" class="form-input border rounded px-3 py-2" /></div>';
+        echo '<div><label class="block text-xs mb-1">Fim</label><input type="date" name="end" class="form-input border rounded px-3 py-2" /></div>';
+        echo '<div><button class="border px-4 py-2 rounded">Apagar imports no período</button></div>';
+        echo '</form>';
         echo '</div>';
         echo '<div class="border rounded-xl p-4">';
         echo '<div class="text-sm font-medium mb-3">Excel (.xlsx)</div>';

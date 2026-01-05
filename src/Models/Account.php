@@ -5,15 +5,15 @@ use PDO;
 
 class Account
 {
-    public static function create(int $accountTypeId, string $partyType, int $partyId, string $description, float $totalAmount, int $installments, string $firstDueDate, ?string $document = null): int
+    public static function create(int $accountTypeId, string $partyType, int $partyId, string $description, float $totalAmount, int $installments, string $firstDueDate, ?string $document = null, int $imported = 0, ?string $importBatch = null): int
     {
         $pdo = Database::getConnection();
         $kindStmt = $pdo->prepare('SELECT kind FROM account_types WHERE id = ?');
         $kindStmt->execute([$accountTypeId]);
         $kind = $kindStmt->fetchColumn();
         $pdo->beginTransaction();
-        $stmt = $pdo->prepare('INSERT INTO accounts (account_type_id, party_type, party_id, description, total_amount, due_start_date, direction, document) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$accountTypeId, $partyType, $partyId, $description, $totalAmount, $firstDueDate, $kind, $document]);
+        $stmt = $pdo->prepare('INSERT INTO accounts (account_type_id, party_type, party_id, description, total_amount, due_start_date, direction, document, imported, import_batch) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$accountTypeId, $partyType, $partyId, $description, $totalAmount, $firstDueDate, $kind, $document, $imported, $importBatch]);
         $accountId = (int)$pdo->lastInsertId();
         $per = round($totalAmount / $installments, 2);
         $sum = 0.0;
@@ -53,7 +53,29 @@ class Account
     public static function delete(int $id): void
     {
         $pdo = Database::getConnection();
+        $pdo->prepare('DELETE FROM installments WHERE account_id = ?')->execute([$id]);
         $pdo->prepare('DELETE FROM accounts WHERE id = ?')->execute([$id]);
+    }
+
+    public static function deleteImported(string $direction, ?string $batchId = null, ?string $start = null, ?string $end = null): int
+    {
+        $pdo = Database::getConnection();
+        $where = ['imported = 1', 'direction = ?'];
+        $params = [$direction];
+        if ($batchId) { $where[] = 'import_batch = ?'; $params[] = $batchId; }
+        if ($start) { $where[] = 'due_start_date >= ?'; $params[] = $start; }
+        if ($end) { $where[] = 'due_start_date <= ?'; $params[] = $end; }
+        $sqlIds = 'SELECT id FROM accounts WHERE ' . implode(' AND ', $where);
+        $stmt = $pdo->prepare($sqlIds);
+        $stmt->execute($params);
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $deleted = 0;
+        foreach ($ids as $aid) {
+            $pdo->prepare('DELETE FROM installments WHERE account_id = ?')->execute([$aid]);
+            $pdo->prepare('DELETE FROM accounts WHERE id = ?')->execute([$aid]);
+            $deleted++;
+        }
+        return $deleted;
     }
 }
 

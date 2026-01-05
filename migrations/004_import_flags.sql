@@ -1,0 +1,4 @@
+ALTER TABLE accounts
+  ADD COLUMN imported TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN import_batch VARCHAR(64) NULL;
+
