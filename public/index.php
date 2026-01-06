@@ -91,7 +91,8 @@ switch ($page) {
         foreach ($byDate as $date => $info) {
             $saldo = (float)$info['saldo'];
             $saldoCls = $saldo >= 0 ? 'text-blue_bell-600' : 'text-brand';
-            echo '<tr class="border-t bg-gray-50"><td colspan="10" class="py-2 px-2 font-medium">' . htmlspecialchars($date) . '</td></tr>';
+            echo '<tr class="border-t bg-gray-50 sm:hidden"><td colspan="6" class="py-2 px-2 font-medium">' . htmlspecialchars($date) . '</td></tr>';
+            echo '<tr class="border-t bg-gray-50 hidden sm:table-row"><td colspan="10" class="py-2 px-2 font-medium">' . htmlspecialchars($date) . '</td></tr>';
             foreach ($info['items'] as $it) {
                 $kindLbl = $it['kind']==='receita' ? '<span class="text-blue_bell-600">Receita</span>' : '<span class="text-brand">Despesa</span>';
                 $statusLbl = $it['status']==='paid' ? '<span class="text-green-600">Baixado</span>' : '<span class="text-carbon_black-600">Pendente</span>';
@@ -122,7 +123,12 @@ switch ($page) {
                 echo '</td>';
                 echo '</tr>';
             }
-            echo '<tr class="border-t">';
+            echo '<tr class="border-t sm:hidden">';
+            echo '<td colspan="4" class="py-2 text-right font-medium">Saldo do dia</td>';
+            echo '<td class="text-right ' . $saldoCls . '">R$ ' . number_format($saldo, 2, ',', '.') . '</td>';
+            echo '<td></td>';
+            echo '</tr>';
+            echo '<tr class="border-t hidden sm:table-row">';
             echo '<td colspan="8" class="py-2 text-right font-medium">Saldo do dia</td>';
             echo '<td class="text-right ' . $saldoCls . '">R$ ' . number_format($saldo, 2, ',', '.') . '</td>';
             echo '<td></td>';
