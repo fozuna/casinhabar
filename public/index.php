@@ -691,7 +691,7 @@ switch ($page) {
         break;
     case 'users':
         $canManage = AAuth::requireRole(['admin']);
-        if ($method === 'POST' && $canManage) {
+        if ($method === 'POST' && $canManage && ($_POST['form'] ?? '') === 'user_create') {
             $name = trim($_POST['name'] ?? '');
             $email = trim($_POST['email'] ?? '');
             $password = $_POST['password'] ?? '';
@@ -702,12 +702,33 @@ switch ($page) {
                 exit;
             }
         }
+        if ($method === 'POST' && $canManage && ($_POST['form'] ?? '') === 'user_update') {
+            $id = (int)($_POST['id'] ?? 0);
+            $name = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $role = $_POST['role'] ?? 'viewer';
+            $password = $_POST['password'] ?? null;
+            if ($id && $name && $email) {
+                User::update($id, $name, $email, $role, $password);
+            }
+            header('Location: index.php?page=users');
+            exit;
+        }
+        if ($method === 'POST' && $canManage && ($_POST['form'] ?? '') === 'user_delete') {
+            $id = (int)($_POST['id'] ?? 0);
+            if ($id) {
+                User::delete($id);
+            }
+            header('Location: index.php?page=users');
+            exit;
+        }
         $pdo = App\Core\Database::getConnection();
         $users = $pdo->query('SELECT id, name, email, role FROM users ORDER BY id DESC')->fetchAll(PDO::FETCH_ASSOC);
         echo '<div class="bg-white shadow rounded p-4">';
         echo '<div class="text-lg font-semibold mb-3">Usuários</div>';
         if ($canManage) {
             echo '<form method="post" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6">';
+            echo '<input type="hidden" name="form" value="user_create" />';
             echo '<input name="name" placeholder="Nome" class="border rounded px-3 py-2" required />';
             echo '<input name="email" type="email" placeholder="E-mail" class="border rounded px-3 py-2" required />';
             echo '<input name="password" type="password" placeholder="Senha" class="border rounded px-3 py-2" required />';
@@ -718,11 +739,35 @@ switch ($page) {
             echo '<div class="text-sm text-carbon_black-600 mb-3">Apenas administradores podem cadastrar usuários.</div>';
         }
         echo '<table class="w-full text-sm">';
-        echo '<thead><tr class="text-left"><th class="py-2">Nome</th><th>E-mail</th><th>Papel</th></tr></thead><tbody>';
+        echo '<thead><tr class="text-left"><th class="py-2">Nome</th><th>E-mail</th><th>Papel</th>' . ($canManage ? '<th class="w-40">Ações</th>' : '') . '</tr></thead><tbody>';
         foreach ($users as $u) {
-            echo '<tr class="border-t"><td class="py-2">' . htmlspecialchars($u['name']) . '</td><td>' . htmlspecialchars($u['email']) . '</td><td>' . htmlspecialchars($u['role']) . '</td></tr>';
+            echo '<tr class="border-t"><td class="py-2">' . htmlspecialchars($u['name']) . '</td><td>' . htmlspecialchars($u['email']) . '</td><td>' . htmlspecialchars($u['role']) . '</td>';
+            if ($canManage) {
+                echo '<td class="flex items-center gap-2 py-2">';
+                echo '<a title="Editar" aria-label="Editar" href="index.php?page=users&edit_user=' . intval($u['id']) . '" class="inline-flex items-center justify-center w-8 h-8 rounded border"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0L15.13 5.12l3.75 3.75 1.83-1.83z"/></svg></a>';
+                echo '<form method="post" style="display:inline"><input type="hidden" name="form" value="user_delete" /><input type="hidden" name="id" value="' . intval($u['id']) . '" /><button title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center w-8 h-8 rounded border"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></form>';
+                echo '</td>';
+            }
+            echo '</tr>';
         }
         echo '</tbody></table>';
+        if (isset($_GET['edit_user']) && $canManage) {
+            $editId = (int)($_GET['edit_user']);
+            foreach ($users as $uu) { if ((int)$uu['id'] === $editId) { $eu = $uu; break; } }
+            if (!empty($eu)) {
+                echo '<div class="mt-4 bg-white shadow rounded p-4">';
+                echo '<div class="text-lg font-semibold mb-3">Editar Usuário</div>';
+                echo '<form method="post" class="grid grid-cols-1 md:grid-cols-5 gap-3">';
+                echo '<input type="hidden" name="form" value="user_update" /><input type="hidden" name="id" value="' . intval($eu['id']) . '" />';
+                echo '<input name="name" value="' . htmlspecialchars($eu['name']) . '" class="border rounded px-3 py-2" required />';
+                echo '<input name="email" type="email" value="' . htmlspecialchars($eu['email']) . '" class="border rounded px-3 py-2" required />';
+                echo '<input name="password" type="password" placeholder="Nova senha (opcional)" class="border rounded px-3 py-2" />';
+                echo '<select name="role" class="border rounded px-3 py-2"><option value="viewer"' . ($eu['role']==='viewer'?' selected':'') . '>Leitor</option><option value="manager"' . ($eu['role']==='manager'?' selected':'') . '>Gestor</option><option value="admin"' . ($eu['role']==='admin'?' selected':'') . '>Admin</option></select>';
+                echo '<div class="md:col-span-5"><button class="bg-imperial_blue-600 text-white px-4 py-2 rounded">Salvar</button></div>';
+                echo '</form>';
+                echo '</div>';
+            }
+        }
         echo '</div>';
         break;
     case 'import':

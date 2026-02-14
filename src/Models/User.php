@@ -22,5 +22,25 @@ class User
         $stmt->execute([$name, $email, $hash, $role]);
         return (int)$pdo->lastInsertId();
     }
+
+    public static function update(int $id, string $name, string $email, string $role, ?string $password = null): bool
+    {
+        $pdo = Database::getConnection();
+        if ($password !== null && $password !== '') {
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare('UPDATE users SET name = ?, email = ?, role = ?, password_hash = ? WHERE id = ?');
+            return $stmt->execute([$name, $email, $role, $hash, $id]);
+        } else {
+            $stmt = $pdo->prepare('UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?');
+            return $stmt->execute([$name, $email, $role, $id]);
+        }
+    }
+
+    public static function delete(int $id): bool
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
+        return $stmt->execute([$id]);
+    }
 }
 
