@@ -42,5 +42,35 @@ class Installment
             $pdo->prepare('UPDATE accounts SET status = "closed" WHERE id = ?')->execute([$accountId]);
         }
     }
+
+    public static function summaryByKind(string $kind): array
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('SELECT i.status, SUM(i.amount) AS total
+            FROM installments i
+            JOIN accounts a ON a.id = i.account_id
+            WHERE a.direction = ?
+            GROUP BY i.status');
+        $stmt->execute([$kind]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $totalPrevisto = 0.0;
+        $totalPago = 0.0;
+        $totalPendente = 0.0;
+        foreach ($rows as $row) {
+            $val = (float)($row['total'] ?? 0);
+            $totalPrevisto += $val;
+            if (($row['status'] ?? '') === 'paid') {
+                $totalPago += $val;
+            } else {
+                $totalPendente += $val;
+            }
+        }
+        return [
+            'previsto' => $totalPrevisto,
+            'pago' => $totalPago,
+            'pendente' => $totalPendente,
+        ];
+    }
 }
+
 

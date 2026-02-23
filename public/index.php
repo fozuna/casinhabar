@@ -139,6 +139,23 @@ switch ($page) {
         echo '<script src="js/dashboard.js"></script>';
         echo '<script>(function(){var labels=' . json_encode($series['labels']) . ';var rec=' . json_encode($series['receitas']) . ';var des=' . json_encode($series['despesas']) . ';drawLineChart("chartLine",labels,rec,des,"#3e92cc","#d8315b");var pR=' . json_encode($split['pendingReceitas']) . ';var pD=' . json_encode($split['pendingDespesas']) . ';var paidR=' . json_encode($split['paidReceitas']) . ';var paidD=' . json_encode($split['paidDespesas']) . ';drawDoughnut("chartPending",[pR,pD],["#3e92cc","#d8315b"],["Receitas","Despesas"]);drawDoughnut("chartPaid",[paidR,paidD],["#3e92cc","#d8315b"],["Receitas","Despesas"]);})();</script>';
         break;
+    case 'import_template':
+        $dirTpl = $_GET['dir'] === 'despesa' ? 'despesa' : 'receita';
+        $format = $_GET['format'] === 'csv' ? 'csv' : 'csv';
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="modelo_importacao_' . $dirTpl . '.csv"');
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['data', 'valor', 'parte', 'descricao', 'documento', 'status'], ';');
+        $today = date('Y-m-d');
+        if ($dirTpl === 'receita') {
+            fputcsv($out, [$today, '1000.00', 'Cliente Exemplo', 'Mensalidade', '', 'pendente'], ';');
+            fputcsv($out, [$today, '250.00', 'Cliente 2', 'Serviço avulso', '', 'pago'], ';');
+        } else {
+            fputcsv($out, [$today, '500.00', 'Fornecedor Exemplo', 'Compra de insumos', 'NF-123', 'pendente'], ';');
+            fputcsv($out, [$today, '120.00', 'Fornecedor 2', 'Serviço de manutenção', 'REC-456', 'pago'], ';');
+        }
+        fclose($out);
+        exit;
     case 'customers':
         if ($method === 'POST') {
             $name = trim($_POST['name'] ?? '');
@@ -207,6 +224,7 @@ switch ($page) {
         break;
     case 'entries':
         $dir = $_GET['dir'] === 'despesa' ? 'despesa' : 'receita';
+        $summary = Installment::summaryByKind($dir);
         if ($method === 'POST' && ($_POST['form'] ?? '') === 'import') {
             $typeId = (int)($_POST['account_type_id'] ?? 0);
             $file = $_FILES['csv'] ?? null;
@@ -375,52 +393,172 @@ switch ($page) {
         $suppliers = Supplier::all();
         $accountsAll = Account::all();
         $accounts = array_values(array_filter($accountsAll, function($a) use ($dir) { return ($a['kind'] ?? '') === $dir; }));
-        echo '<div class="bg-white shadow rounded p-4">';
-        echo '<div class="flex items-center justify-between mb-3">';
-        echo '<div class="text-lg font-semibold">Lançamentos • ' . ($dir === 'receita' ? 'Receitas' : 'Despesas') . '</div>';
-        echo '<div class="text-sm">';
-        echo '<a class="px-3 py-1 rounded ' . ($dir==='receita'?'bg-blue_bell-600 text-white':'bg-white border') . '" href="index.php?page=entries&dir=receita">Receitas</a> ';
-        echo '<a class="px-3 py-1 rounded ' . ($dir==='despesa'?'bg-brand text-white':'bg-white border') . '" href="index.php?page=entries&dir=despesa">Despesas</a>';
+        $prev = $summary['previsto'] ?? 0;
+        $paid = $summary['pago'] ?? 0;
+        $pend = $summary['pendente'] ?? 0;
+        echo '<div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3">';
+        echo '<div class="bg-white shadow rounded-xl p-3 md:p-4 flex flex-col gap-1">';
+        echo '<div class="text-xs text-carbon_black-900">Previsto em ' . ($dir === 'receita' ? 'receitas' : 'despesas') . '</div>';
+        echo '<div class="flex items-baseline gap-2"><span class="text-lg md:text-2xl font-semibold text-blue_bell-600">R$ ' . number_format($prev, 2, ',', '.') . '</span></div>';
+        echo '</div>';
+        echo '<div class="bg-white shadow rounded-xl p-3 md:p-4 flex flex-col gap-1">';
+        echo '<div class="text-xs text-carbon_black-900">Já ' . ($dir === 'receita' ? 'recebido' : 'pago') . '</div>';
+        echo '<div class="flex items-baseline gap-2"><span class="text-lg md:text-2xl font-semibold ' . ($paid >= 0 ? 'text-blue_bell-600' : 'text-brand') . '">R$ ' . number_format($paid, 2, ',', '.') . '</span></div>';
+        echo '</div>';
+        echo '<div class="bg-white shadow rounded-xl p-3 md:p-4 flex flex-col gap-1">';
+        echo '<div class="text-xs text-carbon_black-900">Pendente</div>';
+        echo '<div class="flex items-baseline gap-2"><span class="text-lg md:text-2xl font-semibold ' . ($pend >= 0 ? ($dir === 'receita' ? 'text-blue_bell-600' : 'text-brand') : 'text-brand') . '">R$ ' . number_format($pend, 2, ',', '.') . '</span></div>';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="bg-white shadow rounded-xl p-4 md:p-6">';
+        echo '<div class="flex items-center justify-between mb-4">';
+        echo '<div class="flex items-center gap-3">';
+        echo '<span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-imperial_blue-600 text-white shadow-sm">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18a1 1 0 011 1v4H2V6a1 1 0 011-1zm-1 7h22v7a1 1 0 01-1 1H3a1 1 0 01-1-1v-7zm4 2a1 1 0 100 2h3a1 1 0 100-2H6zm8 0a1 1 0 100 2h4a1 1 0 100-2h-4z"/></svg>';
+        echo '</span>';
+        echo '<div>';
+        echo '<div class="text-sm font-semibold text-carbon_black-600">Lançamentos • ' . ($dir === 'receita' ? 'Receitas' : 'Despesas') . '</div>';
+        echo '<div class="text-xs text-carbon_black-900">Registre receitas e despesas como em um app bancário</div>';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="inline-flex items-center gap-1 rounded-full bg-carbon_black-900/40 p-1 text-xs">';
+        echo '<a class="px-3 py-1 rounded-full ' . ($dir==='receita'?'bg-blue_bell-600 text-white shadow':'text-carbon_black-600') . '" href="index.php?page=entries&dir=receita">Receitas</a>';
+        echo '<a class="px-3 py-1 rounded-full ' . ($dir==='despesa'?'bg-brand text-white shadow':'text-carbon_black-600') . '" href="index.php?page=entries&dir=despesa">Despesas</a>';
         echo '</div>';
         echo '</div>';
         echo '<script>(function(){var map={receita:' . json_encode(array_map(function($t){return ['id'=>$t['id'],'label'=>$t['name'].' • '.$t['cost_center_name']];}, $typesReceita)) . ',despesa:' . json_encode(array_map(function($t){return ['id'=>$t['id'],'label'=>$t['name'].' • '.$t['cost_center_name']];}, $typesDespesa)) . '};document.querySelectorAll(\"form\").forEach(function(f){var d=f.querySelector(\"select[name=dir]\");var t=f.querySelector(\"select[name=account_type_id]\");if(!d||!t){return;}function refill(){var list=map[d.value]||[];t.innerHTML=\"\";list.forEach(function(it){var o=document.createElement(\"option\");o.value=it.id;o.textContent=it.label;t.appendChild(o);});}d.addEventListener(\"change\",refill);});})();</script>';
-        if (!empty($error)) echo '<div class="text-brand mb-3">' . htmlspecialchars($error) . '</div>';
-        echo '<form method="post" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-6">';
+        if (!empty($error)) echo '<div class="text-brand mb-4 text-sm">' . htmlspecialchars($error) . '</div>';
+        echo '<div class="mb-4 flex items-center justify-between">';
+        echo '<div class="flex items-center gap-2 text-sm font-medium text-carbon_black-600">';
+        echo '<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue_bell-500/10 text-blue_bell-500">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4h14a2 2 0 012 2v2H3V6a2 2 0 012-2zm-2 7h18v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7zm4 3a1 1 0 100 2h3a1 1 0 100-2H7zm7 0a1 1 0 100 2h4a1 1 0 100-2h-4z"/></svg>';
+        echo '</span>';
+        echo '<span>Novo lançamento</span>';
+        echo '</div>';
+        echo '<div class="text-xs text-carbon_black-900">Preencha os campos abaixo e confirme para registrar</div>';
+        echo '</div>';
+        echo '<form method="post" class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6" aria-labelledby="entriesFormHeading">';
         echo '<input type="hidden" name="form" value="account" />';
         $clsType = !empty($errors['account_type_id']) ? 'border-brand ring-1 ring-brand' : 'border';
-        $typeMap = [];
-        foreach ($types as $t) { $typeMap[] = ['id'=>$t['id'], 'label'=>$t['name'].' • '.$t['kind'].' • '.$t['cost_center_name']]; }
-        echo '<input list="type_list" name="type_label" placeholder="Tipo de conta" class="' . $clsType . ' rounded px-3 py-2 md:col-span-2" />';
-        echo '<datalist id="type_list">';
-        foreach ($typeMap as $tm) { echo '<option value="' . htmlspecialchars($tm['label']) . '"></option>'; }
-        echo '</datalist>';
+        $typeOptions = [];
+        foreach ($types as $t) { $typeOptions[] = ['id'=>$t['id'], 'name'=>$t['name'], 'kind'=>$t['kind'], 'cost_center'=>$t['cost_center_name']]; }
+        echo '<div class="md:col-span-2 space-y-1.5">';
+        echo '<label class="block text-xs font-medium text-carbon_black-600" for="type_label">Tipo de conta</label>';
+        echo '<div class="relative" data-entry-combobox="type">';
+        echo '<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-carbon_black-600/70">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7a2 2 0 012-2h14a2 2 0 012 2v3H3V7zm0 5h20v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5zm4 3a1 1 0 100 2h3a1 1 0 100-2H7z"/></svg>';
+        echo '</span>';
+        echo '<input id="type_label" name="type_label" type="text" autocomplete="off" class="w-full border ' . $clsType . ' rounded-lg pl-9 pr-3 py-2.5 bg-ghost_white-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue_bell-500 focus:border-blue_bell-500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" role="combobox" aria-controls="type_listbox" placeholder="Buscar por tipo ou centro de custos" />';
+        echo '<div id="type_listbox" class="absolute z-20 mt-1 w-full bg-white border rounded shadow max-h-60 overflow-auto hidden" role="listbox"></div>';
+        echo '</div>';
+        if (!empty($errors['account_type_id'])) {
+            echo '<p class="mt-1 text-xs text-brand" data-error="type">' . htmlspecialchars($errors['account_type_id']) . '</p>';
+        } else {
+            echo '<p class="mt-1 text-xs text-brand hidden" data-error="type"></p>';
+        }
+        echo '</div>';
         echo '<input type="hidden" name="account_type_id" />';
         $clsPartyType = !empty($errors['party_id']) ? 'border-brand ring-1 ring-brand' : 'border';
-        echo '<select name="party_type" class="' . $clsPartyType . ' rounded px-3 py-2">';
+        echo '<div class="space-y-1.5">';
+        echo '<label class="block text-xs font-medium text-carbon_black-600" for="party_type">Vínculo</label>';
+        echo '<div class="relative">';
+        echo '<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-carbon_black-600/70">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm-7 8a7 7 0 0114 0H5z"/></svg>';
+        echo '</span>';
+        echo '<select id="party_type" name="party_type" class="w-full border ' . $clsPartyType . ' rounded-lg pl-9 pr-3 py-2.5 bg-ghost_white-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue_bell-500 focus:border-blue_bell-500">';
         echo '<option value="customer">Cliente</option><option value="supplier">Fornecedor</option><option value="none">Sem vínculo</option>';
         echo '</select>';
-        $partyMap = [];
-        foreach ($customers as $c) { $partyMap[] = ['id'=>'c_'.intval($c['id']), 'label'=>'Cliente • '.$c['name']]; }
-        foreach ($suppliers as $s) { $partyMap[] = ['id'=>'s_'.intval($s['id']), 'label'=>'Fornecedor • '.$s['name']]; }
-        echo '<input list="party_list" name="party_label" placeholder="Cliente ou Fornecedor" class="' . $clsPartyType . ' rounded px-3 py-2" />';
-        echo '<datalist id="party_list">';
-        foreach ($partyMap as $pm) { echo '<option value="' . htmlspecialchars($pm['label']) . '"></option>'; }
-        echo '</datalist>';
+        echo '</div>';
+        echo '</div>';
+        $partyOptions = [];
+        foreach ($customers as $c) { $partyOptions[] = ['id'=>'c_'.intval($c['id']), 'kind'=>'customer', 'name'=>$c['name'], 'doc'=>$c['cpf_cnpj'] ?? null, 'email'=>$c['email'] ?? null, 'phone'=>$c['phone'] ?? null]; }
+        foreach ($suppliers as $s) { $partyOptions[] = ['id'=>'s_'.intval($s['id']), 'kind'=>'supplier', 'name'=>$s['name'], 'doc'=>$s['cpf_cnpj'] ?? null, 'email'=>$s['email'] ?? null, 'phone'=>$s['phone'] ?? null]; }
+        echo '<div class="md:col-span-2 space-y-1.5">';
+        echo '<label class="block text-xs font-medium text-carbon_black-600" for="party_label">Cliente ou Fornecedor</label>';
+        echo '<div class="relative" data-entry-combobox="party">';
+        echo '<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-carbon_black-600/70">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6a4 4 0 118 0 4 4 0 01-8 0zm9 4a4 4 0 118 0 4 4 0 01-8 0zM2 20a4 4 0 014-4h4a4 4 0 014 4v1H2v-1zm11.172-3A5.99 5.99 0 0118 20v1h4v-1a4 4 0 00-4-4h-4.828z"/></svg>';
+        echo '</span>';
+        echo '<input id="party_label" name="party_label" type="text" autocomplete="off" class="w-full border ' . $clsPartyType . ' rounded-lg pl-9 pr-3 py-2.5 bg-ghost_white-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue_bell-500 focus:border-blue_bell-500" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" role="combobox" aria-controls="party_listbox" placeholder="Buscar por nome, documento ou e-mail" />';
+        echo '<div id="party_listbox" class="absolute z-20 mt-1 w-full bg-white border rounded shadow max-h-60 overflow-auto hidden" role="listbox"></div>';
+        echo '</div>';
+        if (!empty($errors['party_id'])) {
+            echo '<p class="mt-1 text-xs text-brand" data-error="party">' . htmlspecialchars($errors['party_id']) . '</p>';
+        } else {
+            echo '<p class="mt-1 text-xs text-brand hidden" data-error="party"></p>';
+        }
+        echo '</div>';
         echo '<input type="hidden" name="party_id" />';
-        echo '<script>(function(){var types=' . json_encode($typeMap) . ';var parties=' . json_encode($partyMap) . ';function mapInputToHidden(inpName,list,hiddenName){var inp=document.querySelector("[name="+inpName+"]");var hid=document.querySelector("[name="+hiddenName+"]");if(!inp||!hid)return;inp.addEventListener("change",function(){var v=inp.value;var f=list.find(function(x){return x.label===v});hid.value=f?f.id:"";});} mapInputToHidden("type_label",types,"account_type_id");mapInputToHidden("party_label",parties,"party_id");})();</script>';
-        echo '<input name="description" placeholder="Descrição" class="border rounded px-3 py-2 md:col-span-2" />';
+        echo '<script>window.entryTypeOptions=' . json_encode($typeOptions) . ';window.entryPartyOptions=' . json_encode($partyOptions) . ';</script>';
+        echo '<div class="md:col-span-2 space-y-1.5">';
+        echo '<label class="block text-xs font-medium text-carbon_black-600" for="description">Descrição</label>';
+        echo '<div class="relative">';
+        echo '<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-carbon_black-600/70">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4a2 2 0 00-2 2v12.5A1.5 1.5 0 004.5 20H19a1 1 0 001-1V8.414A2 2 0 0019.414 7L15 2.586A2 2 0 0013.586 2H5zm8 1.414L18.586 11H15a2 2 0 01-2-2V5.414z"/></svg>';
+        echo '</span>';
+        echo '<input id="description" name="description" placeholder="Descrição" class="w-full border rounded-lg pl-9 pr-3 py-2.5 bg-ghost_white-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue_bell-500 focus:border-blue_bell-500" />';
+        echo '</div>';
+        echo '</div>';
         $clsDoc = 'border';
-        if ($dir === 'despesa') { echo '<input name="document" placeholder="Documento (NF, recibo, etc.)" class="' . $clsDoc . ' rounded px-3 py-2 md:col-span-2" />'; }
+        if ($dir === 'despesa') {
+            echo '<div class="md:col-span-2 space-y-1.5">';
+            echo '<label class="block text-xs font-medium text-carbon_black-600" for="document">Documento</label>';
+            echo '<div class="relative">';
+            echo '<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-carbon_black-600/70">';
+            echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2V4a2 2 0 00-2-2H6z"/></svg>';
+            echo '</span>';
+            echo '<input id="document" name="document" placeholder="Documento (NF, recibo, etc.)" class="w-full ' . $clsDoc . ' rounded-lg pl-9 pr-3 py-2.5 bg-ghost_white-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue_bell-500 focus:border-blue_bell-500" />';
+            echo '</div>';
+            echo '</div>';
+        }
         $clsTotal = !empty($errors['total_amount']) ? 'border-brand ring-1 ring-brand' : 'border';
         $clsInst = !empty($errors['installments']) ? 'border-brand ring-1 ring-brand' : 'border';
         $clsDate = !empty($errors['first_due_date']) ? 'border-brand ring-1 ring-brand' : 'border';
-        echo '<input name="total_amount" type="number" step="0.01" placeholder="Valor total" class="' . $clsTotal . ' rounded px-3 py-2" required />';
-        echo '<input name="installments" type="number" min="1" placeholder="Parcelas" class="' . $clsInst . ' rounded px-3 py-2" required />';
-        echo '<input name="first_due_date" type="date" class="' . $clsDate . ' rounded px-3 py-2" required />';
-        echo '<div class="md:col-span-6"><button class="bg-imperial_blue-600 text-white px-4 py-2 rounded">Cadastrar</button></div>';
+        echo '<div class="space-y-1.5">';
+        echo '<label class="block text-xs font-medium text-carbon_black-600" for="total_amount">Valor total</label>';
+        echo '<div class="relative">';
+        echo '<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-carbon_black-600/70">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a1 1 0 01.993.883L13 4v1.07a4.5 4.5 0 012.995 1.586 1 1 0 11-1.5 1.32A2.5 2.5 0 0012 7H11a2 2 0 000 4h1a4 4 0 110 8v1a1 1 0 01-2 0v-1.07a4.5 4.5 0 01-2.995-1.586 1 1 0 111.5-1.32A2.5 2.5 0 0012 17h1a2 2 0 000-4h-1a4 4 0 110-8V4a1 1 0 011-1z"/></svg>';
+        echo '</span>';
+        echo '<input id="total_amount" name="total_amount" type="number" step="0.01" placeholder="Valor total" class="w-full border ' . $clsTotal . ' rounded-lg pl-9 pr-3 py-2.5 bg-ghost_white-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue_bell-500 focus:border-blue_bell-500" required />';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="space-y-1.5">';
+        echo '<label class="block text-xs font-medium text-carbon_black-600" for="installments">Parcelas</label>';
+        echo '<div class="relative">';
+        echo '<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-carbon_black-600/70">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2z"/></svg>';
+        echo '</span>';
+        echo '<input id="installments" name="installments" type="number" min="1" placeholder="Parcelas" class="w-full border ' . $clsInst . ' rounded-lg pl-9 pr-3 py-2.5 bg-ghost_white-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue_bell-500 focus:border-blue_bell-500" required />';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="space-y-1.5">';
+        echo '<label class="block text-xs font-medium text-carbon_black-600" for="first_due_date">Primeiro vencimento</label>';
+        echo '<div class="relative">';
+        echo '<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-carbon_black-600/70">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3a1 1 0 011 1v1h8V4a1 1 0 112 0v1h1a2 2 0 012 2v11a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2h1V4a1 1 0 011-1zm13 8H4v8h16v-8z"/></svg>';
+        echo '</span>';
+        echo '<input id="first_due_date" name="first_due_date" type="date" class="w-full border ' . $clsDate . ' rounded-lg pl-9 pr-3 py-2.5 bg-ghost_white-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue_bell-500 focus:border-blue_bell-500" required />';
+        echo '</div>';
+        echo '</div>';
+        echo '<div class="md:col-span-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-2">';
+        echo '<p class="text-xs text-carbon_black-900">Ao clicar em Cadastrar, as parcelas serão criadas automaticamente.</p>';
+        echo '<button type="submit" class="inline-flex items-center justify-center gap-2 bg-imperial_blue-600 hover:bg-imperial_blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9.707 17.707L4.5 12.5l1.414-1.414 3.793 3.793 8.379-8.379 1.414 1.414-9.793 9.793z"/></svg>';
+        echo '<span>Cadastrar</span>';
+        echo '</button>';
+        echo '</div>';
         echo '</form>';
-        echo '<div class="mt-6 bg-white shadow rounded p-5">';
+        echo '<div class="mt-6 bg-white shadow rounded p-5" aria-label="Importar lançamentos">';
         echo '<div class="text-lg font-semibold mb-4">Importar Lançamentos • ' . ($dir==='receita'?'Receitas':'Despesas') . '</div>';
+        echo '<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4 text-xs text-carbon_black-900">';
+        echo '<div>Use um arquivo com colunas: <span class="font-semibold">data, valor, parte, descricao, documento, status</span>.</div>';
+        echo '<div class="flex flex-wrap gap-2">';
+        echo '<a href="index.php?page=import_template&dir=' . $dir . '&format=csv" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs hover:bg-ghost_white-600">';
+        echo '<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V9.828a2 2 0 00-.586-1.414l-4.828-4.828A2 2 0 0014.172 3H5zm9 1.414L19.586 10H16a2 2 0 01-2-2V4.414z"/><path d="M8 13h8v2H8v-2zm0 4h5v2H8v-2z"/></svg>';
+        echo '<span>Baixar modelo CSV</span></a>';
+        echo '</div>';
+        echo '</div>';
         echo '<div class="space-y-6">';
         echo '<div class="border rounded-xl p-4">';
         echo '<div class="text-sm font-medium mb-3">CSV</div>';
@@ -478,6 +616,7 @@ switch ($page) {
         echo '</div>';
         echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js"></script>';
         echo '<script src="js/import.js"></script>';
+        echo '<script src="js/entries_form.js"></script>';
         echo '</div>';
         foreach ($accounts as $a) {
             echo '<div class="border rounded p-3 mb-4">';
@@ -767,6 +906,46 @@ switch ($page) {
                 echo '</form>';
                 echo '</div>';
             }
+        }
+        echo '</div>';
+        break;
+    case 'profile':
+        $pdo = App\Core\Database::getConnection();
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        if ($uid <= 0) {
+            header('Location: login.php');
+            exit;
+        }
+        if ($method === 'POST' && ($_POST['form'] ?? '') === 'profile_update') {
+            $name = trim($_POST['name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $password = $_POST['password'] ?? '';
+            $pdoUser = App\Models\User::findByEmail($email);
+            $role = $_SESSION['user_role'] ?? ($pdoUser['role'] ?? 'viewer');
+            if ($name && $email) {
+                App\Models\User::update($uid, $name, $email, $role, $password ?: null);
+                $_SESSION['user_name'] = $name;
+                $_SESSION['user_email'] = $email;
+            }
+            header('Location: index.php?page=profile');
+            exit;
+        }
+        $stmt = $pdo->prepare('SELECT id, name, email, role FROM users WHERE id = ? LIMIT 1');
+        $stmt->execute([$uid]);
+        $me = $stmt->fetch(PDO::FETCH_ASSOC);
+        echo '<div class="bg-white shadow rounded p-4 max-w-xl">';
+        echo '<div class="text-lg font-semibold mb-3">Meu perfil</div>';
+        if ($me) {
+            echo '<form method="post" class="grid grid-cols-1 gap-3">';
+            echo '<input type="hidden" name="form" value="profile_update" />';
+            echo '<label class="text-sm">Nome<input name="name" value="' . htmlspecialchars($me['name']) . '" class="mt-1 border rounded px-3 py-2 w-full" required /></label>';
+            echo '<label class="text-sm">E-mail<input name="email" type="email" value="' . htmlspecialchars($me['email']) . '" class="mt-1 border rounded px-3 py-2 w-full" required /></label>';
+            echo '<label class="text-sm">Nova senha (opcional)<input name="password" type="password" class="mt-1 border rounded px-3 py-2 w-full" /></label>';
+            echo '<div class="text-sm text-carbon_black-600">Papel: ' . htmlspecialchars($me['role']) . '</div>';
+            echo '<div><button class="bg-imperial_blue-600 text-white px-4 py-2 rounded">Salvar alterações</button></div>';
+            echo '</form>';
+        } else {
+            echo '<div class="text-sm text-brand">Usuário não encontrado.</div>';
         }
         echo '</div>';
         break;

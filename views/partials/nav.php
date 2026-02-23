@@ -62,6 +62,10 @@
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.7 0 3-1.3 3-3s-1.3-3-3-3-3 1.3-3 3 1.3 3 3 3zm-8 0c1.7 0 3-1.3 3-3S9.7 5 8 5s-3 1.3-3 3 1.3 3 3 3zm0 2c-2.7 0-8 1.3-8 4v2h10v-2c0-1.4.6-2.6 1.5-3.6-.9-.2-2-.4-3.5-.4zm8 0c-.6 0-1.1 0-1.6.1 1.2.9 2 2.3 2 3.9v2h8v-2c0-2.7-5.3-4-8.4-4z"/></svg>
       <span>Usuários</span>
     </a>
+    <a href="index.php?page=profile" class="flex items-center gap-3 px-3 py-2 rounded hover:bg-brand/80 mt-3">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.7-9.8 5V22h19.6v-2.6c0-3.3-6.5-5-9.8-5z"/></svg>
+      <span>Meu perfil</span>
+    </a>
   </nav>
   <div class="p-3 border-t border-brand">
     <a class="flex items-center gap-3 px-3 py-2 rounded hover:bg-brand/80" href="logout.php">
